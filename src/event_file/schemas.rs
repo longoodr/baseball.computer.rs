@@ -397,20 +397,29 @@ impl EventBaserunners {
             .iter()
             .find(|a| a.baserunner == baserunner);
         match (starting_state, advance) {
-            (Some(ss), Some(a)) => Some(Self {
+            (Some(ss), Some(a)) => {
+                let runner_id = match GameLineupAppearance::get_at_event(
+                    &game_context.lineup_appearances,
+                    ss.lineup_position,
+                    event.event_id,
+                    event.context.batting_side,
+                ) {
+                    Ok(appearance) => appearance.player_id,
+                    Err(_) => {
+                        tracing::warn!(
+                            "Could not find lineup appearance for runner at {:?} in game {}, event {}. Skipping.",
+                            baserunner, game_context.game_id.id, event.event_id
+                        );
+                        return None;
+                    }
+                };
+                Some(Self {
                 game_id: game_context.game_id.id,
                 event_id: event.event_id,
                 event_key: event.event_key,
                 baserunner,
                 runner_lineup_position: ss.lineup_position,
-                runner_id: GameLineupAppearance::get_at_event(
-                    &game_context.lineup_appearances,
-                    ss.lineup_position,
-                    event.event_id,
-                    event.context.batting_side,
-                )
-                .unwrap()
-                .player_id,
+                runner_id,
                 charge_event_id: ss.charge_event_id,
                 reached_on_event_id: Some(ss.reached_on_event_id),
                 explicit_charged_pitcher_id: ss.explicit_charged_pitcher_id,
@@ -426,22 +435,32 @@ impl EventBaserunners {
                 explicit_out_flag: a.explicit_out_flag,
                 run_scored_flag: a.run_scored_flag,
                 rbi_flag: a.rbi_flag,
-            }),
+            })
+            },
             // Runner was on base but either stayed put or got CS
-            (Some(ss), None) => Some(Self {
+            (Some(ss), None) => {
+                let runner_id = match GameLineupAppearance::get_at_event(
+                    &game_context.lineup_appearances,
+                    ss.lineup_position,
+                    event.event_id,
+                    event.context.batting_side,
+                ) {
+                    Ok(appearance) => appearance.player_id,
+                    Err(_) => {
+                        tracing::warn!(
+                            "Could not find lineup appearance for runner at {:?} in game {}, event {}. Skipping.",
+                            baserunner, game_context.game_id.id, event.event_id
+                        );
+                        return None;
+                    }
+                };
+                Some(Self {
                 game_id: game_context.game_id.id,
                 event_id: event.event_id,
                 event_key: event.event_key,
                 baserunner,
                 runner_lineup_position: ss.lineup_position,
-                runner_id: GameLineupAppearance::get_at_event(
-                    &game_context.lineup_appearances,
-                    ss.lineup_position,
-                    event.event_id,
-                    event.context.batting_side,
-                )
-                .unwrap()
-                .player_id,
+                runner_id,
                 charge_event_id: ss.charge_event_id,
                 reached_on_event_id: Some(ss.reached_on_event_id),
                 explicit_charged_pitcher_id: ss.explicit_charged_pitcher_id,
@@ -461,7 +480,8 @@ impl EventBaserunners {
                 explicit_out_flag: attempted_sb,
                 run_scored_flag: false,
                 rbi_flag: false,
-            }),
+            })
+            },
             // Batter if there was a play involving him
             (None, Some(a)) => Some(Self {
                 game_id: game_context.game_id.id,
