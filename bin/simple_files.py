@@ -75,6 +75,22 @@ def parse_simple_files() -> None:
                 elif "roster" in output_file.name and len(new_line.split(",")) < 7:
                     print(f"Skipping row in file {fin.filename()} with missing data: " + original_line.strip())
                     continue
+                # Normalize schedule rows to exactly 12 columns
+                # Chadwick data has varying column counts (10-13) and quoted fields with commas
+                if "schedule" in output_file.name:
+                    import csv as csv_mod, io
+                    parsed = list(csv_mod.reader(io.StringIO(new_line.strip())))
+                    if parsed:
+                        fields = parsed[0]
+                        while len(fields) > 1 and fields[-1] == "":
+                            fields.pop()
+                        if len(fields) < 12:
+                            fields.extend([""] * (12 - len(fields)))
+                        elif len(fields) > 12:
+                            fields = fields[:12]
+                        buf = io.StringIO()
+                        csv_mod.writer(buf).writerow(fields)
+                        new_line = buf.getvalue().strip()
                 if check_dupes:
                     lines.add(new_line)
                 fout.write(new_line.strip() + "\n")
